@@ -5,8 +5,10 @@ import ai.openfabric.api.model.Worker;
 import com.github.dockerjava.api.*;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.command.ListContainersCmd;
+import com.github.dockerjava.api.exception.DockerException;
 import com.github.dockerjava.api.exception.NotFoundException;
 import com.github.dockerjava.api.model.Container;
+import com.github.dockerjava.api.model.Statistics;
 import com.github.dockerjava.core.*;
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
 import com.github.dockerjava.transport.DockerHttpClient;
@@ -244,6 +246,25 @@ public class WorkerController
         {
             throw new RuntimeException("Error while getting worker info for container..." + containerName, e);
         }
+    }
+
+    // 4. Get Container Statistics
+    @PostMapping("/containers/{containerName}/stats")
+    public String getContainerStats(@PathVariable String containerName) {
+        String stats = "";
+        worker = workerRepository.findByName(containerName);
+        String containerId = worker.getId();
+        InvocationBuilder.AsyncResultCallback<Statistics> callback = new InvocationBuilder.AsyncResultCallback<>();
+        try
+        {
+            InvocationBuilder.AsyncResultCallback<Statistics> statsObj = dockerClient.statsCmd(containerId).exec(callback);
+            stats = statsObj.toString();
+        }
+        catch (DockerException e)
+        {
+            e.printStackTrace();
+        }
+        return stats;
     }
 
 }
