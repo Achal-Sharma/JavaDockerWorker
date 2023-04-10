@@ -142,6 +142,77 @@ public class WorkerController
         }
     }
 
+    @PostMapping("/stopWorker/{containerName}")
+    public ResponseEntity<String> stopDocker(@PathVariable String containerName)
+    {
+        boolean isInactive;
+        worker = workerRepository.findByName(containerName);
+
+        try
+        {
+            ListContainersCmd listContainersCmd = dockerClient.listContainersCmd().withShowAll(true).withNameFilter(Collections.singletonList(containerName));
+            List<Container> containers = listContainersCmd.exec();
+
+            // if container doesn't exist in database
+            if (worker == null)
+            {
+                // if actual container exists
+                if (containers.size() == 1)
+                {
+                    String containerId = containers.get(0).getId();
+                    InspectContainerResponse inspectContainerResponse = dockerClient.inspectContainerCmd(containerId).exec();
+                    isInactive = Boolean.FALSE.equals(inspectContainerResponse.getState().getRunning());
+
+                    worker = new Worker();
+                    worker.setName(containerName);
+                    worker.setPort(getPortNumber(containerName));
+                    workerRepository.save(worker);
+
+                    if (!isInactive)
+                    {
+                        dockerClient.stopContainerCmd(containerName).exec();
+                    }
+                    worker.setStatus("inactive");
+                    workerRepository.save(worker);
+                    return ResponseEntity.ok(worker.getName() + " container is " + (isInactive ? "already " : "") + "inactive...");
+                }
+                // if actual container doesn't exists
+                else
+                {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Container doesn't exist...");
+                }
+            }
+            // if container exists in database
+            else
+            {
+                // if actual container exists
+                if (containers.size() == 1)
+                {
+                    String containerId = containers.get(0).getId();
+                    InspectContainerResponse inspectContainerResponse = dockerClient.inspectContainerCmd(containerId).exec();
+                    isInactive = Boolean.FALSE.equals(inspectContainerResponse.getState().getRunning());
+
+                    if (!isInactive)
+                    {
+                        dockerClient.stopContainerCmd(containerName).exec();
+                    }
+                    worker.setStatus("inactive");
+                    workerRepository.save(worker);
+                    return ResponseEntity.ok(worker.getName() + " container is " + (isInactive ? "already " : "") + "inactive...");
+                }
+                // if actual container doesn't exist
+                else
+                {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Container doesn't exist...");
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            logger.error("Encountered an error while stopping the container", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Refer to stack trace..." + e.getMessage());
+        }
+    }
 
     private String getPortNumber(String containerName)
     {
