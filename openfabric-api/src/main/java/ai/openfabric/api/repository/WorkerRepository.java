@@ -7,4 +7,5 @@ import org.springframework.data.repository.CrudRepository;
 public interface WorkerRepository extends CrudRepository<Worker, String>
 {
     Object findAll(Pageable pageRequest);
+    Worker findByName(String name);
 }
