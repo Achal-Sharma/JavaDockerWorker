@@ -1,11 +1,17 @@
 package ai.openfabric.api.controller;
 
 import ai.openfabric.api.repository.WorkerRepository;
+import ai.openfabric.api.model.Worker;
 import com.github.dockerjava.api.*;
 import com.github.dockerjava.core.*;
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
 import com.github.dockerjava.transport.DockerHttpClient;
 import java.time.Duration;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -34,5 +40,20 @@ public class WorkerController
                 .connectionTimeout(Duration.ofSeconds(30))
                 .responseTimeout(Duration.ofSeconds(45))
                 .build();
+    }
+
+    // 1. List workers (paginated)
+    @GetMapping(path = "/listWorkers")
+    public Page<Worker> listWorkers(@RequestParam int page,
+                                    @RequestParam int size,
+                                    @RequestParam(defaultValue = "id,asc") String[] sort)
+    {
+        String sortBy = sort[0];
+        String sortOrder = sort.length > 1 ? sort[1] : "asc";
+        Sort.Direction direction = Sort.Direction.fromString(sortOrder);
+        Sort sortable = Sort.by(direction, sortBy);
+
+        Pageable pageRequest = PageRequest.of(page, size, sortable);
+        return (Page<Worker>) workerRepository.findAll(pageRequest);
     }
 }
