@@ -5,6 +5,7 @@ import ai.openfabric.api.model.Worker;
 import com.github.dockerjava.api.*;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.command.ListContainersCmd;
+import com.github.dockerjava.api.exception.NotFoundException;
 import com.github.dockerjava.api.model.Container;
 import com.github.dockerjava.core.*;
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
@@ -70,6 +71,7 @@ public class WorkerController
         return (Page<Worker>) workerRepository.findAll(pageRequest);
     }
 
+    // 2a: Start Worker
     @PostMapping("/startWorker/{containerName}")
     public ResponseEntity<String> startDocker(@PathVariable String containerName)
     {
@@ -142,6 +144,7 @@ public class WorkerController
         }
     }
 
+    // 2b. Stop Worker
     @PostMapping("/stopWorker/{containerName}")
     public ResponseEntity<String> stopDocker(@PathVariable String containerName)
     {
@@ -223,4 +226,24 @@ public class WorkerController
                 .map(container -> container.getPorts()[0].getPublicPort())
                 .orElse(null)).toString();
     }
+
+    // 3. Get Worker Information
+    @PostMapping("/getWorkerInformation/{containerName}")
+    public Worker getWorkerInformation(@PathVariable String containerName)
+    {
+        try
+        {
+            worker = workerRepository.findByName(containerName);
+            if(worker == null)
+            {
+                throw new NotFoundException("Worker with name " + containerName + " not found...");
+            }
+            return worker;
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException("Error while getting worker info for container..." + containerName, e);
+        }
+    }
+
 }
